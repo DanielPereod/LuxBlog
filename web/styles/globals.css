@@ -14,3 +14,27 @@ a {
 * {
   box-sizing: border-box;
 }
+
+.background {
+  background-image: url("../public/bg.svg");
+}
+
+.custom-shape-divider-top-1605005456 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.custom-shape-divider-top-1605005456 svg {
+  position: relative;
+  display: block;
+  width: calc(128% + 1.3px);
+  height: 169px;
+}
+
+.custom-shape-divider-top-1605005456 .shape-fill {
+  fill: #ffffff;
+}

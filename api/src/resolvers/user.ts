@@ -48,6 +48,16 @@ export class UserResolver {
     return users;
   }
 
+  @Query(() => User, { nullable: true })
+  async me(@Ctx() { req, em }: MyContext) {
+    if (!req.session.userId) {
+      return null;
+    }
+
+    const user = await em.findOne(User, { id: req.session.userId });
+    return user;
+  }
+
   @Query(() => User)
   async user(
     @Arg("id") id: string,
@@ -58,10 +68,10 @@ export class UserResolver {
     return user;
   }
 
-  @Query(() => UserResponse)
+  @Mutation(() => UserResponse)
   async login(
     @Args() { email, password }: InputUser,
-    @Ctx() { em }: MyContext
+    @Ctx() { em, req }: MyContext
   ): Promise<UserResponse> {
     const user = await em.findOne(User, { email });
     if (!user) {
@@ -88,6 +98,8 @@ export class UserResolver {
       };
     }
     if (verifiedHash) {
+      req.session.userId = user.id;
+
       return {
         user: user,
       };
@@ -102,19 +114,33 @@ export class UserResolver {
     };
   }
 
-  @Mutation(() => Boolean)
+  @Mutation(() => UserResponse)
   async register(
     @Args() { username, email, password }: InputUser,
     @Ctx() { em }: MyContext
-  ): Promise<Boolean> {
+  ): Promise<UserResponse> {
     try {
       let hash = await argon2.hash(password);
       const user = em.create(User, { username, email, password: hash });
       await em.persistAndFlush(user);
-      return true;
+      return {
+        user: user,
+      };
     } catch (error) {
-      console.log(error);
-      return false;
+      if (error.constraint === "user_username_unique") {
+        return {
+          errors: [{ field: "username", message: "username already exist" }],
+        };
+      }
+      if (error.constraint === "user_email_unique") {
+        return {
+          errors: [{ field: "email", message: "email already exist" }],
+        };
+      }
+
+      return {
+        errors: [{ field: "web", message: "something went wrong" }],
+      };
     }
   }
 }
