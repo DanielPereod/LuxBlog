@@ -1,45 +1,87 @@
+import {
+  ColorModeProvider,
+  CSSReset,
+  theme,
+  ThemeProvider,
+} from "@chakra-ui/core";
+import { Cache, cacheExchange, QueryInput } from "@urql/exchange-graphcache";
+import type { AppProps } from "next/app";
+import { createClient, dedupExchange, fetchExchange, Provider } from "urql";
+import {
+  LoginMutation,
+  MeDocument,
+  MeQuery,
+  RegisterMutation,
+} from "../graphql/generated/graphql";
 import "../styles/globals.css";
 
-import type { AppProps } from "next/app";
-import {
-  CSSReset,
-  ThemeProvider,
-  ColorModeProvider,
-  theme,
-} from "@chakra-ui/core";
-import { createClient, Provider } from "urql";
-import { createContext, useEffect, useState } from "react";
-import { useMeQuery } from "../graphql/generated/graphql";
+function betterUpdateQuery<Result, Query>(
+  cache: Cache,
+  qi: QueryInput,
+  result: any,
+  fn: (r: Result, q: Query) => Query
+) {
+  return cache.updateQuery(qi, (data: any) => fn(result, data as any) as any);
+}
 
 const client = createClient({
   url: "http://localhost:4040/graphql",
   fetchOptions: {
     credentials: "include",
   },
+  exchanges: [
+    dedupExchange,
+    cacheExchange({
+      updates: {
+        Mutation: {
+          login: (_result, args, cache, info) => {
+            betterUpdateQuery<LoginMutation, MeQuery>(
+              cache,
+              { query: MeDocument },
+              _result,
+              (result, query) => {
+                if (result.login.errors) {
+                  return query;
+                } else {
+                  return {
+                    me: result.login.user,
+                  };
+                }
+              }
+            );
+          },
+          register: (_result, args, cache, info) => {
+            betterUpdateQuery<RegisterMutation, MeQuery>(
+              cache,
+              { query: MeDocument },
+              _result,
+              (result, query) => {
+                if (result.register.errors) {
+                  return query;
+                } else {
+                  return {
+                    me: result.register.user,
+                  };
+                }
+              }
+            );
+          },
+        },
+      },
+    }),
+    fetchExchange,
+  ],
 });
 
-const UserContext = createContext(null);
-
 function MyApp({ Component, pageProps }: AppProps) {
-  const [user, setUser] = useState();
-  /* const [{ fetching, data }] = useMeQuery(); */
-
-  /*   useEffect(() => {
-    if (!user && !fetching) {
-      console.log(data?.me);
-      /* setUser(); 
-    }
-  }); */
   return (
     <Provider value={client}>
-      <UserContext.Provider value={null}>
-        <ThemeProvider theme={theme}>
-          <ColorModeProvider>
-            <CSSReset />
-            <Component {...pageProps} />
-          </ColorModeProvider>
-        </ThemeProvider>
-      </UserContext.Provider>
+      <ThemeProvider theme={theme}>
+        <ColorModeProvider>
+          <CSSReset />
+          <Component {...pageProps} />
+        </ColorModeProvider>
+      </ThemeProvider>
     </Provider>
   );
 }

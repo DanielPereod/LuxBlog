@@ -10,8 +10,8 @@ export default function Navbar({}: Props): ReactElement {
   const [{ data, fetching }] = useMeQuery();
 
   if (fetching) {
-    return <LoadScreen />;
   }
+
   const isLogged = (
     <Flex align="center" fontWeight="semibold">
       {data?.me?.username}
