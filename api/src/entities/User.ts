@@ -1,31 +1,38 @@
-import { Entity, PrimaryKey, Property } from "@mikro-orm/core";
-import { Field, ObjectType, ID } from "type-graphql";
+import { Field, ID, ObjectType } from "type-graphql";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryColumn,
+  UpdateDateColumn,
+  BaseEntity,
+} from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 
 @Entity()
 @ObjectType()
-export class User {
+export class User extends BaseEntity {
   @Field(() => ID, { nullable: false })
-  @PrimaryKey()
-  readonly id = uuidv4();
+  @PrimaryColumn()
+  readonly id: string = uuidv4();
 
   @Field()
-  @Property({ type: "text", unique: true })
+  @Column({ unique: true })
   username!: string;
 
   @Field()
-  @Property({ type: "text", unique: true })
+  @Column({ unique: true })
   email!: string;
 
   @Field(() => String)
-  @Property({ type: "date" })
-  createdAt = new Date();
+  @CreateDateColumn()
+  createdAt: Date;
 
   @Field(() => String)
-  @Property({ type: "date", onUpdate: () => new Date() })
-  updatedAt = new Date();
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @Field(() => String)
-  @Property({ type: "text" })
+  @Column()
   password!: string;
 }

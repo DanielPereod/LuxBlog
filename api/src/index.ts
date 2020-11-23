@@ -3,25 +3,37 @@ import dotenv from "dotenv";
 import express from "express";
 import { ApolloServer } from "apollo-server-express";
 import { buildSchema } from "type-graphql";
-import { MikroORM } from "@mikro-orm/core";
-import mikroOrmConfig from "./mikro-orm.config";
 import { UserResolver } from "./resolvers/user";
 import session from "express-session";
 import connectRedis from "connect-redis";
-import redis from "redis";
+import Redis from "ioredis";
 import cors from "cors";
+import { COOKIE_NAME } from "./constants";
+import { PostResolver } from "./resolvers/post";
+import { createConnection } from "typeorm";
+import { User } from "./entities/User";
+import { Post } from "./entities/Post";
 
 const __prod__ = process.env.PROD! === "true" ? true : false;
 
 async function main() {
   dotenv.config();
-  const orm = await MikroORM.init(mikroOrmConfig);
-  await orm.getMigrator().up();
+  await createConnection({
+    type: "postgres",
+    host: "localhost",
+    database: process.env.PG_NAME,
+    username: process.env.PG_USER,
+    password: process.env.PG_PASSWORD,
+    synchronize: true,
+    entities: [User, Post],
+    logging: !__prod__,
+  });
 
   const app = express();
 
   const RedisStore = connectRedis(session);
-  const redisClient = redis.createClient();
+  const redis = new Redis();
+
   app.use(
     cors({
       credentials: true,
@@ -30,9 +42,9 @@ async function main() {
   );
   app.use(
     session({
-      name: "qid",
+      name: COOKIE_NAME,
       store: new RedisStore({
-        client: redisClient,
+        client: redis,
         disableTTL: true,
         disableTouch: true,
       }),
@@ -50,10 +62,10 @@ async function main() {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [UserResolver],
+      resolvers: [UserResolver, PostResolver],
       validate: false,
     }),
-    context: ({ req, res }) => ({ em: orm.em, req, res }),
+    context: ({ req, res }) => ({ req, res, redis }),
   });
 
   apolloServer.applyMiddleware({ app, cors: false });

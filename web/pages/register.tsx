@@ -9,15 +9,17 @@ import {
   useColorMode,
 } from "@chakra-ui/core";
 import { Formik } from "formik";
+import { withUrqlClient } from "next-urql";
 import { useRouter } from "next/dist/client/router";
 import React, { ReactElement } from "react";
 import AuthInput from "../components/AuthInput";
 import { useRegisterMutation } from "../graphql/generated/graphql";
+import { createUrlClient } from "../utils/createUrqlClient";
 import { toErrorMap } from "../utils/toErrorMap";
 
 interface Props {}
 
-export default function register({}: Props): ReactElement {
+function Register({}: Props): ReactElement {
   const router = useRouter();
   const { colorMode } = useColorMode();
   const [, register] = useRegisterMutation();
@@ -111,3 +113,5 @@ export default function register({}: Props): ReactElement {
     </Flex>
   );
 }
+
+export default withUrqlClient(createUrlClient)(Register);

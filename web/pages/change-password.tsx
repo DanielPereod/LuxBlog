@@ -1,19 +1,21 @@
-import { Box, Button, Flex, Heading, Link } from "@chakra-ui/core";
+import { Box, Heading, Button, Flex, Link } from "@chakra-ui/core";
 import { Formik } from "formik";
 import { withUrqlClient } from "next-urql";
 import { useRouter } from "next/dist/client/router";
 import React, { ReactElement } from "react";
 import AuthInput from "../components/AuthInput";
-import { useLoginMutation } from "../graphql/generated/graphql";
+import {
+  useForgotPasswordMutation,
+  useLoginMutation,
+} from "../graphql/generated/graphql";
 import { createUrlClient } from "../utils/createUrqlClient";
 import { toErrorMap } from "../utils/toErrorMap";
 
 interface Props {}
 
-function Login({}: Props): ReactElement {
+function ChangePassword({}: Props): ReactElement {
   const router = useRouter();
-
-  const [, login] = useLoginMutation();
+  const [, forgotPassword] = useForgotPasswordMutation();
 
   return (
     <Flex height="100vh" className="background">
@@ -27,24 +29,23 @@ function Login({}: Props): ReactElement {
         alignContent="center"
       >
         <Heading textAlign="center" mb="10">
-          Login
+          Change Password
         </Heading>
         <Formik
           initialValues={{
             email: "",
             password: "",
           }}
-          onSubmit={async (values, { setErrors }) => {
-            const res = await login({
-              email: values.email,
-              password: values.password,
-            });
-
-            if (res.data?.login.errors) {
-              setErrors(toErrorMap(res.data.login.errors));
-            } else if (res.data?.login.user) {
-              router.push("/");
+          onSubmit={async (values) => {
+            try {
+              await forgotPassword({
+                email: values.email,
+              });
+            } catch (error) {
+              console.log(error);
             }
+
+            router.push("/");
           }}
         >
           {({ isSubmitting, handleChange, values, handleSubmit, errors }) => (
@@ -57,28 +58,16 @@ function Login({}: Props): ReactElement {
                 type="email"
               />
 
-              <AuthInput
-                errors={errors.password}
-                type=""
-                name="password"
-                handleChange={handleChange}
-                values={values.password}
-              />
-
               <Box w="100" textAlign="center">
                 <Button w="50%" isLoading={isSubmitting} type="submit">
-                  Login
+                  Send email
                 </Button>
               </Box>
             </form>
           )}
         </Formik>
-        <Box mt="20px" opacity={0.5} textAlign="center">
-          <Link href="/register">Create an account!</Link>
-          <Link href="change-password">Forgot your password?</Link>
-        </Box>
       </Box>
     </Flex>
   );
 }
-export default withUrqlClient(createUrlClient)(Login);
+export default withUrqlClient(createUrlClient, { ssr: false })(ChangePassword);
